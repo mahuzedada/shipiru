@@ -24,17 +24,17 @@
 
 - name: Create .kube directory
   file:
-    path: /home/{{ ansible_user }}/.kube
+    path: "/home/{{ ansible_user_id }}/.kube"
     state: directory
     mode: '0755'
 
 - name: Copy admin.conf to user's kube config
   copy:
     src: /etc/kubernetes/admin.conf
-    dest: /home/{{ ansible_user }}/.kube/config
+    dest: "/home/{{ ansible_user_id }}/.kube/config"
     remote_src: yes
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_id }}"
     mode: '0644'
 
 - name: Install Flannel network

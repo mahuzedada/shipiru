@@ -1,7 +1,8 @@
 ---
 # main.yml
-- name: Setup Kubernetes and Docker
-  hosts: all
+- name: Setup Kubernetes and Docker locally
+  hosts: localhost
+  connection: local
   become: yes
   tasks:
     - name: Include Docker installation tasks

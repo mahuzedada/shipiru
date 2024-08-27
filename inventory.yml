@@ -2,6 +2,5 @@
 # inventory.yml
 all:
   hosts:
-    your_server:
-      ansible_host: your_server_ip
-      ansible_user: your_ssh_user
+    localhost:
+      ansible_connection: local
