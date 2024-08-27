@@ -1,12 +1,24 @@
+---
+# tasks/install_kubernetes.yml
+- name: Install required packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: yes
+
 - name: Add Kubernetes GPG key
   apt_key:
-    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
     state: present
 
 - name: Add Kubernetes repository
   apt_repository:
-    repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+    repo: deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
     state: present
+    filename: kubernetes
 
 - name: Install Kubernetes components
   apt:
@@ -16,6 +28,15 @@
       - kubectl
     state: present
     update_cache: yes
+
+- name: Hold Kubernetes packages at their installed version
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
 
 - name: Initialize Kubernetes cluster
   command: kubeadm init --pod-network-cidr=10.244.0.0/16
@@ -37,10 +58,10 @@
     group: "{{ ansible_user_id }}"
     mode: '0644'
 
-- name: Install Flannel network
-  command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+- name: Install Calico network
+  command: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
   become: no
 
 - name: Allow pods to be scheduled on the control-plane node
-  command: kubectl taint nodes --all node-role.kubernetes.io/master-
+  command: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
   become: no
