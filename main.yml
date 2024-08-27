@@ -256,6 +256,7 @@
         state: file
         suffix: temp_ingress.yaml
       register: temp_ingress_file
+      become: yes
 
     - name: Write Ingress YAML to temporary file
       copy:
@@ -276,6 +277,15 @@
                       port: 
                         number: 80
         dest: "{{ temp_ingress_file.path }}"
+      become: yes
+
+    - name: Set correct ownership and permissions for the temporary file
+      file:
+        path: "{{ temp_ingress_file.path }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+        mode: '0644'
+      become: yes
 
     - name: Apply the Ingress resource
       command: kubectl --kubeconfig {{ kubeconfig }} apply -f {{ temp_ingress_file.path }}
@@ -286,3 +296,4 @@
       file:
         path: "{{ temp_ingress_file.path }}"
         state: absent
+      become: yes
