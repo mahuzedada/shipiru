@@ -1,0 +1,31 @@
+---
+- name: Configure DevOps Stack
+  hosts: all
+  become: yes
+  vars:
+    setup_type: "{{ setup_type | default('basic') }}"
+  roles:
+    - common
+    - docker
+    - { role: kubernetes, when: setup_type == 'advanced' }
+    - nginx
+    - certbot
+    - monitoring
+
+- name: Deploy applications
+  hosts: all
+  become: yes
+  tasks:
+    - name: Deploy with Docker Compose
+      docker_compose:
+        project_src: "{{ playbook_dir }}/../docker"
+        state: present
+      when: setup_type == 'basic'
+
+    - name: Deploy to Kubernetes
+      k8s:
+        definition: "{{ lookup('file', item) }}"
+        state: present
+      with_fileglob:
+        - "{{ playbook_dir }}/../kubernetes/**/*.yaml"
+      when: setup_type == 'advanced'

@@ -1,0 +1,54 @@
+---
+- name: Create monitoring directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/prometheus
+    - /etc/alertmanager
+    - /etc/grafana/provisioning/dashboards
+    - /etc/grafana/provisioning/datasources
+
+- name: Copy Prometheus configuration
+  copy:
+    src: "{{ playbook_dir }}/../monitoring/prometheus/prometheus.yml"
+    dest: /etc/prometheus/prometheus.yml
+
+- name: Copy Prometheus alert rules
+  copy:
+    src: "{{ playbook_dir }}/../monitoring/prometheus/alert_rules.yml"
+    dest: /etc/prometheus/alert_rules.yml
+
+- name: Copy Alertmanager configuration
+  copy:
+    src: "{{ playbook_dir }}/../monitoring/alertmanager/alertmanager.yml"
+    dest: /etc/alertmanager/alertmanager.yml
+
+- name: Copy Grafana dashboard
+  copy:
+    src: "{{ playbook_dir }}/../monitoring/grafana/dashboards/system_overview.json"
+    dest: /etc/grafana/provisioning/dashboards/system_overview.json
+
+- name: Configure Grafana datasource
+  template:
+    src: datasource.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+
+- name: Restart monitoring services
+  service:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - prometheus
+    - alertmanager
+    - grafana-server
+  when: setup_type == 'basic'
+
+- name: Apply Kubernetes monitoring configurations
+  k8s:
+    definition: "{{ lookup('file', item) }}"
+    state: present
+  with_fileglob:
+    - "{{ playbook_dir }}/../kubernetes/monitoring/*.yaml"
+  when: setup_type == 'advanced'

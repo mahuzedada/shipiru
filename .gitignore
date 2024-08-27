@@ -1,0 +1,6 @@
+echo "*.log
+*.tmp
+*.swp
+.DS_Store
+.env" > .gitignore
+.idea
