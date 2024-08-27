@@ -137,24 +137,45 @@
       become: yes
       become_user: "{{ k8s_user }}"
 
-    - name: Add Nginx Ingress Helm repository
-      command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-      become: yes
-      become_user: "{{ k8s_user }}"
-
-    - name: Download Helm
+    - name: Download Helm installation script
       get_url:
         url: https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
         dest: /tmp/get_helm.sh
         mode: '0700'
+      become: yes
 
     - name: Install Helm
       command: /tmp/get_helm.sh
+      become: yes
+
+    - name: Add Helm binary to PATH for ansible user
+      lineinfile:
+        path: /home/{{ k8s_user }}/.bashrc
+        line: 'export PATH=$PATH:/usr/local/bin'
+        state: present
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Source .bashrc to update PATH
+      shell: source /home/{{ k8s_user }}/.bashrc
+      args:
+        executable: /bin/bash
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Add Nginx Ingress Helm repository
+      command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      become: yes
+      become_user: "{{ k8s_user }}"
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/usr/local/bin"
 
     - name: Update Helm repositories
       command: helm repo update
       become: yes
       become_user: "{{ k8s_user }}"
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/usr/local/bin"
 
     - name: Install Nginx Ingress Controller
       command: >
@@ -164,6 +185,8 @@
         --set controller.service.nodePorts.https=30443
       become: yes
       become_user: "{{ k8s_user }}"
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/usr/local/bin"
 
     - name: Wait for Ingress Controller to be ready
       command: kubectl --kubeconfig {{ kubeconfig }} wait --namespace default --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
