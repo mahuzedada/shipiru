@@ -7,25 +7,43 @@
   vars:
     kubeconfig: "/home/{{ ansible_user_id }}/.kube/config"
   tasks:
-    - name: Check if Kubernetes is already installed
-      stat:
-        path: /etc/kubernetes/manifests/kube-apiserver.yaml
-      register: kube_apiserver
+    - name: Stop Kubernetes-related services
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - kubelet
+        - containerd
+      ignore_errors: yes
 
     - name: Reset Kubernetes cluster
       command: kubeadm reset -f
-      when: kube_apiserver.stat.exists
       ignore_errors: yes
 
-    - name: Remove Kubernetes directories
+    - name: Remove Kubernetes directories and files
       file:
         path: "{{ item }}"
         state: absent
       loop:
-        - /etc/kubernetes/manifests
+        - /etc/kubernetes
+        - /var/lib/kubelet
         - /var/lib/etcd
         - "{{ kubeconfig }}"
-      when: kube_apiserver.stat.exists
+
+    - name: Clear iptables
+      command: "{{ item }}"
+      loop:
+        - iptables -F
+        - iptables -t nat -F
+        - iptables -t mangle -F
+        - iptables -X
+
+    - name: Restart containerd
+      systemd:
+        name: containerd
+        state: restarted
+        daemon_reload: yes
 
     - name: Include containerd installation tasks
       include_tasks: tasks/install_containerd.yml
