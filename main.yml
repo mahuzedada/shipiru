@@ -80,7 +80,8 @@
         path: "/home/{{ ansible_user_id }}/.kube"
         state: directory
         mode: '0755'
-      become: no
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
 
     - name: Copy admin.conf to user's kube config
       copy:
@@ -95,14 +96,27 @@
       command: kubectl --kubeconfig {{ kubeconfig }} get nodes
       register: kubectl_result
       until: kubectl_result.rc == 0
-      retries: 6
+      retries: 12
       delay: 10
       become: no
+      become_user: "{{ ansible_user_id }}"
 
     - name: Install Calico network
       command: kubectl --kubeconfig {{ kubeconfig }} apply -f https://docs.projectcalico.org/manifests/calico.yaml
       become: no
+      become_user: "{{ ansible_user_id }}"
 
     - name: Allow pods to be scheduled on the control-plane node
       command: kubectl --kubeconfig {{ kubeconfig }} taint nodes --all node-role.kubernetes.io/control-plane-
       become: no
+      become_user: "{{ ansible_user_id }}"
+
+    - name: Get cluster info
+      command: kubectl --kubeconfig {{ kubeconfig }} cluster-info
+      register: cluster_info
+      become: no
+      become_user: "{{ ansible_user_id }}"
+
+    - name: Display cluster info
+      debug:
+        var: cluster_info.stdout_lines
