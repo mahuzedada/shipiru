@@ -5,7 +5,7 @@
   connection: local
   become: yes
   vars:
-    k8s_user: "{{ ansible_user_id | default(lookup('env', 'USER')) }}"
+    k8s_user: ubuntu
     kubeconfig: "/home/{{ k8s_user }}/.kube/config"
   tasks:
     - name: Display current user
@@ -96,6 +96,28 @@
         group: "{{ k8s_user }}"
         mode: '0600'
 
+    - name: Generate kubeconfig if it doesn't exist
+      command: kubeadm kubeconfig user --org system:masters --client-name admin
+      register: kubeconfig_content
+      when: not ansible_check_mode
+
+    - name: Ensure kubeconfig directory exists
+      file:
+        path: "/home/{{ k8s_user }}/.kube"
+        state: directory
+        mode: '0755'
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+
+    - name: Write kubeconfig
+      copy:
+        content: "{{ kubeconfig_content.stdout }}"
+        dest: "{{ kubeconfig }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+        mode: '0600'
+      when: kubeconfig_content.changed
+
     - name: Wait for Kubernetes API to become available
       command: kubectl --kubeconfig {{ kubeconfig }} get nodes
       register: kubectl_result
@@ -124,3 +146,13 @@
     - name: Display cluster info
       debug:
         var: cluster_info.stdout_lines
+
+    - name: Verify nodes are ready
+      command: kubectl --kubeconfig {{ kubeconfig }} get nodes
+      register: nodes_status
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Display nodes status
+      debug:
+        var: nodes_status.stdout_lines
