@@ -1,0 +1,11 @@
+---
+# main.yml
+- name: Setup Kubernetes and Docker
+  hosts: all
+  become: yes
+  tasks:
+    - name: Include Docker installation tasks
+      include_tasks: tasks/install_docker.yml
+
+    - name: Include Kubernetes installation tasks
+      include_tasks: tasks/install_kubernetes.yml
