@@ -5,8 +5,12 @@
   connection: local
   become: yes
   vars:
-    kubeconfig: "/home/{{ ansible_user_id }}/.kube/config"
+    k8s_user: "{{ ansible_user_id | default(lookup('env', 'USER')) }}"
+    kubeconfig: "/home/{{ k8s_user }}/.kube/config"
   tasks:
+    - name: Display current user
+      debug:
+        msg: "Current user is {{ k8s_user }}"
     - name: Stop Kubernetes-related services
       systemd:
         name: "{{ item }}"
@@ -77,19 +81,19 @@
 
     - name: Create .kube directory
       file:
-        path: "/home/{{ ansible_user_id }}/.kube"
+        path: "/home/{{ k8s_user }}/.kube"
         state: directory
         mode: '0755'
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
 
     - name: Copy admin.conf to user's kube config
       copy:
         src: /etc/kubernetes/admin.conf
         dest: "{{ kubeconfig }}"
         remote_src: yes
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
         mode: '0600'
 
     - name: Wait for Kubernetes API to become available
@@ -98,24 +102,24 @@
       until: kubectl_result.rc == 0
       retries: 12
       delay: 10
-      become: no
-      become_user: "{{ ansible_user_id }}"
+      become: yes
+      become_user: "{{ k8s_user }}"
 
     - name: Install Calico network
       command: kubectl --kubeconfig {{ kubeconfig }} apply -f https://docs.projectcalico.org/manifests/calico.yaml
-      become: no
-      become_user: "{{ ansible_user_id }}"
+      become: yes
+      become_user: "{{ k8s_user }}"
 
     - name: Allow pods to be scheduled on the control-plane node
       command: kubectl --kubeconfig {{ kubeconfig }} taint nodes --all node-role.kubernetes.io/control-plane-
-      become: no
-      become_user: "{{ ansible_user_id }}"
+      become: yes
+      become_user: "{{ k8s_user }}"
 
     - name: Get cluster info
       command: kubectl --kubeconfig {{ kubeconfig }} cluster-info
       register: cluster_info
-      become: no
-      become_user: "{{ ansible_user_id }}"
+      become: yes
+      become_user: "{{ k8s_user }}"
 
     - name: Display cluster info
       debug:
