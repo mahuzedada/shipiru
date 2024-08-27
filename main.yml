@@ -137,6 +137,39 @@
       become: yes
       become_user: "{{ k8s_user }}"
 
+    - name: Add Nginx Ingress Helm repository
+      command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Download Helm
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: '0700'
+
+    - name: Install Helm
+      command: /tmp/get_helm.sh
+
+    - name: Update Helm repositories
+      command: helm repo update
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Install Nginx Ingress Controller
+      command: >
+        helm install ingress-nginx ingress-nginx/ingress-nginx
+        --set controller.service.type=NodePort
+        --set controller.service.nodePorts.http=30080
+        --set controller.service.nodePorts.https=30443
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Wait for Ingress Controller to be ready
+      command: kubectl --kubeconfig {{ kubeconfig }} wait --namespace default --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+      become: yes
+      become_user: "{{ k8s_user }}"
+
     - name: Get cluster info
       command: kubectl --kubeconfig {{ kubeconfig }} cluster-info
       register: cluster_info
@@ -156,3 +189,24 @@
     - name: Display nodes status
       debug:
         var: nodes_status.stdout_lines
+
+    - name: Get Ingress Controller service info
+      command: kubectl --kubeconfig {{ kubeconfig }} get service ingress-nginx-controller
+      register: ingress_service
+      become: yes
+      become_user: "{{ k8s_user }}"
+
+    - name: Display Ingress Controller service info
+      debug:
+        var: ingress_service.stdout_lines
+
+    - name: Setup iptables rule for port forwarding
+      iptables:
+        table: nat
+        chain: PREROUTING
+        protocol: tcp
+        match: tcp
+        destination_port: 80
+        jump: REDIRECT
+        to_ports: 30080
+      become: yes
