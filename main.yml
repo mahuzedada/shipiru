@@ -250,25 +250,39 @@
       command: kubectl --kubeconfig {{ kubeconfig }} expose deployment nginx --port=80 --type=NodePort
       become: yes
       become_user: "{{ k8s_user }}"
-    - name: Create a basic Ingress resource
-      command: |
-        kubectl --kubeconfig {{ kubeconfig }} apply -f - <<EOF
-        apiVersion: networking.k8s.io/v1
-        kind: Ingress
-        metadata:
-          name: nginx-ingress
-        spec:
-          rules:
-          - http:
-              paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: nginx
-                    port: 
-                      number: 80
-        EOF
+
+    - name: Create a temporary file for Ingress YAML
+      tempfile:
+        state: file
+        suffix: temp_ingress.yaml
+      register: temp_ingress_file
+
+    - name: Write Ingress YAML to temporary file
+      copy:
+        content: |
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: nginx-ingress
+          spec:
+            rules:
+            - http:
+                paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: nginx
+                      port: 
+                        number: 80
+        dest: "{{ temp_ingress_file.path }}"
+
+    - name: Apply the Ingress resource
+      command: kubectl --kubeconfig {{ kubeconfig }} apply -f {{ temp_ingress_file.path }}
       become: yes
       become_user: "{{ k8s_user }}"
 
+    - name: Remove the temporary Ingress YAML file
+      file:
+        path: "{{ temp_ingress_file.path }}"
+        state: absent
