@@ -4,6 +4,8 @@
   hosts: localhost
   connection: local
   become: yes
+  vars:
+    kubeconfig: "/home/{{ ansible_user_id }}/.kube/config"
   tasks:
     - name: Include containerd installation tasks
       include_tasks: tasks/install_containerd.yml
@@ -21,20 +23,29 @@
         path: "/home/{{ ansible_user_id }}/.kube"
         state: directory
         mode: '0755'
+      become: no
 
     - name: Copy admin.conf to user's kube config
       copy:
         src: /etc/kubernetes/admin.conf
-        dest: "/home/{{ ansible_user_id }}/.kube/config"
+        dest: "{{ kubeconfig }}"
         remote_src: yes
         owner: "{{ ansible_user_id }}"
         group: "{{ ansible_user_id }}"
-        mode: '0644'
+        mode: '0600'
+
+    - name: Wait for Kubernetes API to become available
+      command: kubectl --kubeconfig {{ kubeconfig }} get nodes
+      register: kubectl_result
+      until: kubectl_result.rc == 0
+      retries: 6
+      delay: 10
+      become: no
 
     - name: Install Calico network
-      command: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+      command: kubectl --kubeconfig {{ kubeconfig }} apply -f https://docs.projectcalico.org/manifests/calico.yaml
       become: no
 
     - name: Allow pods to be scheduled on the control-plane node
-      command: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+      command: kubectl --kubeconfig {{ kubeconfig }} taint nodes --all node-role.kubernetes.io/control-plane-
       become: no
