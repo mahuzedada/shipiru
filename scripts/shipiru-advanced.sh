@@ -30,8 +30,9 @@ cd shipiru
 
 # Run Ansible playbook
 echo "Running Ansible playbook..."
-ansible-playbook -i ansible/inventories/hosts ansible/site.yml -e "setup_type=advanced"
+ansible-playbook -i ansible/inventories/hosts ansible/site.yml -e "setup_type=advanced" --ask-become-pass
 # ansible-playbook -i localhost, -c local ansible/site.yml
+# ansible-playbook -i localhost, -c local ansible/site.yml --ask-become-pass
 
 echo "Setting up Management Interface"
 if [ "$SETUP_TYPE" = "basic" ]; then
