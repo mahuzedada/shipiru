@@ -6,4 +6,4 @@ chmod +x ./pipeline.sh
 npm i js-yaml -g
 
 #ansible-playbook -i localhost, ../tasks/install_docker.yml --connection=local --become
-ansible-playbook ../tasks/install_docker.yml --connection=local --become
+ansible-playbook ../tasks/install_only_docker.yml --connection=local --become
