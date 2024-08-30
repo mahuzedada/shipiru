@@ -5,9 +5,8 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Variables
 REPO_URL="$1"
 BRANCH="$2"
-WORK_DIR_BASE=~/pipeline/repos
-LOG_DIR_BASE=~/pipeline/logs
-DEPLOY_DIR_BASE=/var/www
+WORK_DIR_BASE=~/shipiru/repos
+LOG_DIR_BASE=~/shipiru/logs
 NVM_GLOBAL_MODULE_PATH=/home/ubuntu/.nvm/versions/node/v20.17.0/lib/node_modules
 
 # Define the temporary repo directory
