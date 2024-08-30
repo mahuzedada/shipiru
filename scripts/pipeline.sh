@@ -56,6 +56,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+log_message PARSED_YAML
+
 # Function to execute steps
 execute_steps() {
     local STEPS=$1
