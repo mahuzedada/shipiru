@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = 3333;
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
 
 app.post('/', (req, res) => {
   const payload = req.body;
