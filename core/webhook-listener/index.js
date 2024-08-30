@@ -18,7 +18,7 @@ app.post('/', (req, res) => {
 
   console.log(`Received push on branch ${branch} for repository ${repoName}`);
 
-  const scriptPath = path.resolve(process.env.HOME, 'pipeline', 'build.sh');
+  const scriptPath = path.resolve(process.env.HOME, 'shipiru', 'scripts', 'pipeline.sh');
   console.log(`Will execute build script: ${scriptPath} ${repoUrl} ${branch}`);
 
   // Run the build.sh script with the full path
