@@ -74,7 +74,6 @@ execute_steps() {
             DEPLOYMENT_NAME=$(echo "$STEP" | jq -r '.step.deployment[] | select(.name != null) | .name')
             SOURCE_PATH=$(echo "$STEP" | jq -r '.step.deployment[] | select(.source != null) | .source')
             DESTINATION_PATH=$(echo "$STEP" | jq -r '.step.deployment[] | select(.destination != null) | .destination')
-            DEPLOYMENT_SCRIPT=$(echo "$STEP" | jq -r '.step.deployment[] | select(.script != null) | .script')
 
             log_message "Deploying for $APP_ID..." | tee -a "$LOG_FILE"
             log_message "Deployment Name: $DEPLOYMENT_NAME" | tee -a "$LOG_FILE"
@@ -93,16 +92,19 @@ execute_steps() {
                 log_message "Source directory $SOURCE_PATH does not exist for $APP_ID. Skipping file copy." | tee -a "$LOG_FILE"
             fi
 
-            # Check if there's a deployment script to run
-            if [ -n "$DEPLOYMENT_SCRIPT" ]; then
-                log_message "Running deployment script for $APP_ID" | tee -a "$LOG_FILE"
-                if sudo docker run --rm -v $(pwd):/app -w /app $DOCKER_IMAGE /bin/sh -c "$DEPLOYMENT_SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
-                    log_message "Deployment script completed successfully for $APP_ID" | tee -a "$LOG_FILE"
-                else
-                    log_message "Deployment script failed for $APP_ID" | tee -a "$LOG_FILE"
-                    return 1
+            # Handle deployment scripts
+            DEPLOYMENT_SCRIPTS=$(echo "$STEP" | jq -r '.step.deployment[] | select(.script != null) | .script[]')
+            echo "$DEPLOYMENT_SCRIPTS" | while IFS= read -r SCRIPT; do
+                if [ ! -z "$SCRIPT" ]; then
+                    log_message "Running Deployment Script: $SCRIPT for $APP_ID" | tee -a "$LOG_FILE"
+                    if sudo docker run --rm -v $(pwd):/app -w /app $DOCKER_IMAGE /bin/sh -c "$SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
+                        log_message "Deployment script completed successfully for $APP_ID" | tee -a "$LOG_FILE"
+                    else
+                        log_message "Deployment script failed for $APP_ID" | tee -a "$LOG_FILE"
+                        return 1
+                    fi
                 fi
-            fi
+            done
 
             log_message "Deployment completed for $APP_ID" | tee -a "$LOG_FILE"
         fi
