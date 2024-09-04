@@ -5,12 +5,16 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Variables
 REPO_URL="$1"
 BRANCH="$2"
-WORK_DIR_BASE=~/shipiru/repos
-LOG_DIR_BASE=~/shipiru/logs
+WORK_DIR_BASE=~/pipeline/repos
+LOG_DIR_BASE=~/pipeline/logs
 NVM_GLOBAL_MODULE_PATH=/home/ubuntu/.nvm/versions/node/v20.17.0/lib/node_modules
 
-# Define the temporary repo directory
-TEMP_REPO_DIR=temp_repo
+# Extract the repo name from the URL
+REPO_NAME="$(basename -s .git "$(echo "$REPO_URL" | sed 's/\.git$//' | sed 's/\/$//' | sed 's/.*\///')")"
+
+# Define the temporary repo directory with the extracted repo name
+TEMP_REPO_DIR="temp_repo_${REPO_NAME}"
+
 
 # Create log directory and log file
 mkdir -p "$LOG_DIR_BASE"
@@ -56,7 +60,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-log_message $PARSED_YAML
+log_message "$PARSED_YAML"
 
 # Function to execute steps
 execute_steps() {
@@ -105,14 +109,6 @@ execute_steps() {
                         log_message "Deployment script failed for $APP_ID" | tee -a "$LOG_FILE"
                         return 1
                     fi
-#
-#
-#                    if sudo docker run --rm -v $(pwd):/app -w /app $DOCKER_IMAGE /bin/sh -c "$SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
-#                        log_message "Deployment script completed successfully for $APP_ID" | tee -a "$LOG_FILE"
-#                    else
-#                        log_message "Deployment script failed for $APP_ID" | tee -a "$LOG_FILE"
-#                        return 1
-#                    fi
                 fi
             done
 
