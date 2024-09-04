@@ -78,22 +78,23 @@ execute_steps() {
             log_message "Deploying for $APP_ID..." | tee -a "$LOG_FILE"
             log_message "Deployment Name: $DEPLOYMENT_NAME" | tee -a "$LOG_FILE"
 
-            # Ensure the destination directory exists
-            sudo mkdir -p "$DESTINATION_PATH"
-
-            # Check if there's a source directory to copy
-            if [ -n "$SOURCE_PATH" ] && [ -d "$SOURCE_PATH" ]; then
+            # Check if there's a source directory to copy and destination is not empty
+            if [ -n "$SOURCE_PATH" ] && [ -d "$SOURCE_PATH" ] && [ -n "$DESTINATION_PATH" ]; then
                 log_message "Source Path: $SOURCE_PATH" | tee -a "$LOG_FILE"
                 log_message "Destination Path: $DESTINATION_PATH" | tee -a "$LOG_FILE"
                 # Copy files to deployment directory
                 sudo rm -rf "$DESTINATION_PATH" && sudo mkdir -p "$DESTINATION_PATH" && sudo cp -r "$SOURCE_PATH"/* "$DESTINATION_PATH"/ || { log_message "Failed to copy files to $DESTINATION_PATH for $APP_ID" | tee -a "$LOG_FILE"; return 1; }
                 log_message "File copy completed for $APP_ID" | tee -a "$LOG_FILE"
+            elif [ -z "$DESTINATION_PATH" ]; then
+                log_message "Destination path is empty or null for $APP_ID. Skipping file copy." | tee -a "$LOG_FILE"
             elif [ -n "$SOURCE_PATH" ]; then
                 log_message "Source directory $SOURCE_PATH does not exist for $APP_ID. Skipping file copy." | tee -a "$LOG_FILE"
+            else
+                log_message "Source path is empty or null for $APP_ID. Skipping file copy." | tee -a "$LOG_FILE"
             fi
 
-            # Handle deployment scripts
-            DEPLOYMENT_SCRIPTS=$(echo "$STEP" | jq -r '.step.deployment[] | select(.script != null) | .script[]')
+           # Handle deployment scripts
+           DEPLOYMENT_SCRIPTS=$(echo "$STEP" | jq -r '.step.deployment[] | select(.script != null) | .script[]')
            log_message "Deployment Scripts: $DEPLOYMENT_SCRIPTS"
            echo "$DEPLOYMENT_SCRIPTS" | while IFS= read -r SCRIPT; do
                 if [ ! -z "$SCRIPT" ]; then
