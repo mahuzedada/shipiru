@@ -56,7 +56,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-log_message PARSED_YAML
+log_message $PARSED_YAML
 
 # Function to execute steps
 execute_steps() {
@@ -74,6 +74,7 @@ execute_steps() {
             DEPLOYMENT_NAME=$(echo "$STEP" | jq -r '.step.deployment[] | select(.name != null) | .name')
             SOURCE_PATH=$(echo "$STEP" | jq -r '.step.deployment[] | select(.source != null) | .source')
             DESTINATION_PATH=$(echo "$STEP" | jq -r '.step.deployment[] | select(.destination != null) | .destination')
+            DEPLOYMENT_SCRIPT=$(echo "$STEP" | jq -r '.step.deployment[] | select(.script != null) | .script')
 
             log_message "Deploying for $APP_ID..." | tee -a "$LOG_FILE"
             log_message "Deployment Name: $DEPLOYMENT_NAME" | tee -a "$LOG_FILE"
@@ -83,17 +84,30 @@ execute_steps() {
             # Ensure the destination directory exists
             sudo mkdir -p "$DESTINATION_PATH"
 
-            # Check if the source directory exists
-            if [ -d "$SOURCE_PATH" ]; then
+            # Check if there's a source directory to copy
+            if [ -n "$SOURCE_PATH" ] && [ -d "$SOURCE_PATH" ]; then
                 # Copy files to deployment directory
                 sudo rm -rf "$DESTINATION_PATH" && sudo mkdir -p "$DESTINATION_PATH" && sudo cp -r "$SOURCE_PATH"/* "$DESTINATION_PATH"/ || { log_message "Failed to copy files to $DESTINATION_PATH for $APP_ID" | tee -a "$LOG_FILE"; return 1; }
-                log_message "Deployment completed for $APP_ID" | tee -a "$LOG_FILE"
-            else
-                log_message "Source directory $SOURCE_PATH does not exist for $APP_ID. Skipping deployment." | tee -a "$LOG_FILE"
+                log_message "File copy completed for $APP_ID" | tee -a "$LOG_FILE"
+            elif [ -n "$SOURCE_PATH" ]; then
+                log_message "Source directory $SOURCE_PATH does not exist for $APP_ID. Skipping file copy." | tee -a "$LOG_FILE"
             fi
+
+            # Check if there's a deployment script to run
+            if [ -n "$DEPLOYMENT_SCRIPT" ]; then
+                log_message "Running deployment script for $APP_ID" | tee -a "$LOG_FILE"
+                if sudo docker run --rm -v $(pwd):/app -w /app $DOCKER_IMAGE /bin/sh -c "$DEPLOYMENT_SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
+                    log_message "Deployment script completed successfully for $APP_ID" | tee -a "$LOG_FILE"
+                else
+                    log_message "Deployment script failed for $APP_ID" | tee -a "$LOG_FILE"
+                    return 1
+                fi
+            fi
+
+            log_message "Deployment completed for $APP_ID" | tee -a "$LOG_FILE"
         fi
 
-        # Handle script step
+        # Handle script step (unchanged)
         if [ "$(echo "$STEP" | jq -r '.step.script')" != "null" ]; then
             STEP_SCRIPTS=$(echo "$STEP" | jq -r '.step.script[]')
             echo "$STEP_SCRIPTS" | while IFS= read -r SCRIPT; do
