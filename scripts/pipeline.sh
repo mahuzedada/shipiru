@@ -99,7 +99,7 @@ execute_steps() {
            echo "$DEPLOYMENT_SCRIPTS" | while IFS= read -r SCRIPT; do
                 if [ ! -z "$SCRIPT" ]; then
                     log_message "Running Deployment Script: $SCRIPT for $APP_ID" | tee -a "$LOG_FILE"
-                    if sudo sh -c "$SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
+                    if sh -c "$SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
                         log_message "Deployment script completed successfully for $APP_ID" | tee -a "$LOG_FILE"
                     else
                         log_message "Deployment script failed for $APP_ID" | tee -a "$LOG_FILE"
